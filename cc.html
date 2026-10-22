@@ -57,6 +57,14 @@
       cursor: pointer;
     }
 
+    #stopButton {
+      background: #dc3545;
+    }
+
+    #stopButton:hover:not(:disabled) {
+      background: #b52a37;
+    }
+
     button:hover:not(:disabled) {
       background: #5148e5;
     }
@@ -82,7 +90,6 @@
       flex: 1;
     }
 
-    /* Separate box for every video */
     .video-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -154,7 +161,16 @@
         grid-template-columns: 1fr;
       }
 
+      .input-area {
+        flex-wrap: wrap;
+      }
+
+      .input-area input {
+        flex-basis: 100%;
+      }
+
       .input-area button {
+        flex: 1;
         padding: 12px 10px;
       }
     }
@@ -178,6 +194,10 @@
 
       <button id="loadButton" type="submit">
         Load Videos
+      </button>
+
+      <button id="stopButton" type="button" disabled>
+        Stop Search
       </button>
     </form>
 
@@ -211,6 +231,7 @@
     const form = document.getElementById("idForm");
     const startInput = document.getElementById("startId");
     const loadButton = document.getElementById("loadButton");
+    const stopButton = document.getElementById("stopButton");
     const status = document.getElementById("status");
     const grid = document.getElementById("videoGrid");
     const prevButton = document.getElementById("prevButton");
@@ -224,6 +245,9 @@
 
     // Prevent an older search from overwriting a newer search.
     let loadToken = 0;
+
+    // Stop the active search without losing found videos.
+    let stopRequested = false;
 
     function videoUrl(id) {
       return BASE_URL + encodeURIComponent(id) + ".mp4";
@@ -269,6 +293,8 @@
     async function loadBatch(startId, direction = "forward") {
       const token = ++loadToken;
 
+      stopRequested = false;
+
       availableVideos = [];
       firstFoundId = null;
       lastFoundId = null;
@@ -278,6 +304,7 @@
       status.textContent = "Searching for available videos...";
 
       loadButton.disabled = true;
+      stopButton.disabled = false;
       prevButton.disabled = true;
       nextButton.disabled = true;
 
@@ -286,6 +313,7 @@
 
       // Search forward or backward until 12 videos are found.
       while (
+        !stopRequested &&
         availableVideos.length < BATCH_SIZE &&
         checked < MAX_CHECKS &&
         id >= 0 &&
@@ -294,9 +322,10 @@
         if (token !== loadToken) return;
 
         const result = await checkVideo(id);
-        checked++;
 
         if (token !== loadToken) return;
+
+        checked++;
 
         if (result) {
           availableVideos.push(result);
@@ -306,6 +335,9 @@
           `Found ${availableVideos.length}/${BATCH_SIZE} videos` +
           ` · Checked ${checked} IDs`;
 
+        // Stop after the current check completes.
+        if (stopRequested) break;
+
         // Advance to the next ID in the chosen direction.
         id += direction === "forward" ? 1 : -1;
       }
@@ -313,12 +345,12 @@
       if (token !== loadToken) return;
 
       // Backward results were discovered in descending order.
-      // Reverse them so the displayed IDs remain ascending.
+      // Reverse them so displayed IDs remain ascending.
       if (direction === "backward") {
         availableVideos.reverse();
       }
 
-      // Render each video in its own independent box.
+      // Display all videos found, including after stopping.
       availableVideos.forEach(addVideoBox);
 
       if (availableVideos.length > 0) {
@@ -327,20 +359,25 @@
           availableVideos[availableVideos.length - 1].id;
 
         status.textContent =
-          `Loaded ${availableVideos.length} videos` +
+          `${stopRequested ? "Search stopped" : "Loaded"} ` +
+          `${availableVideos.length} videos` +
           ` · IDs ${firstFoundId}–${lastFoundId}`;
       } else {
-        status.textContent = "No available videos found.";
+        status.textContent = stopRequested
+          ? "Search stopped. No videos found yet."
+          : "No available videos found.";
+
         grid.innerHTML =
           '<p class="empty-message">No videos found in this search range.</p>';
       }
 
-      if (availableVideos.length < BATCH_SIZE) {
+      if (!stopRequested && availableVideos.length < BATCH_SIZE) {
         status.textContent +=
           " · Search ended before finding 12 videos.";
       }
 
       loadButton.disabled = false;
+      stopButton.disabled = true;
 
       prevButton.disabled =
         firstFoundId === null || firstFoundId === 0;
@@ -400,16 +437,24 @@
 
       const id = Number(startInput.value);
 
-      if (
-        !Number.isSafeInteger(id) ||
-        id < 0
-      ) {
+      if (!Number.isSafeInteger(id) || id < 0) {
         status.textContent =
           "Enter a valid non-negative video ID.";
         return;
       }
 
       loadBatch(id, "forward");
+    });
+
+    // Stop the current search.
+    stopButton.addEventListener("click", () => {
+      if (stopButton.disabled) return;
+
+      stopRequested = true;
+      stopButton.disabled = true;
+
+      status.textContent =
+        `Stopping search... Found ${availableVideos.length} videos.`;
     });
 
     // Previous: search backward from the first available ID - 1.
