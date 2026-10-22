@@ -1,0 +1,513 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Gallery</title>
+
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d12;
+      --panel: #151922;
+      --border: #292f3c;
+      --accent: #7c5cff;
+      --text: #f4f5f8;
+      --muted: #9ba3b4;
+      --danger: #ff8585;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+    }
+
+    header {
+      padding: 25px 20px;
+      border-bottom: 1px solid var(--border);
+      background: #10131a;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: auto;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 27px;
+      letter-spacing: -0.7px;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 1400px;
+      margin: auto;
+      padding: 24px 20px 40px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 12px;
+      padding: 18px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .field {
+      flex: 1;
+      min-width: 190px;
+    }
+
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      background: #0b0d12;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+    }
+
+    button {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 17px;
+      color: var(--text);
+      background: #222735;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    button:hover:not(:disabled) {
+      background: #343c50;
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    button.primary:hover:not(:disabled) {
+      background: #6847eb;
+    }
+
+    button:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    .info {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin: 22px 0 14px;
+    }
+
+    .info h2 {
+      font-size: 18px;
+      margin: 0;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .video-card {
+      min-width: 0;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .player {
+      position: relative;
+      background: #000;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+    }
+
+    .player video {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .player-status {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      text-align: center;
+      pointer-events: none;
+      color: #b7bdca;
+      font-size: 13px;
+      background: #080a0f;
+      z-index: 1;
+    }
+
+    .player-status.hidden {
+      display: none;
+    }
+
+    .video-details {
+      padding: 12px 14px;
+    }
+
+    .video-title {
+      font-size: 14px;
+      font-weight: 650;
+      margin-bottom: 5px;
+    }
+
+    .video-url {
+      color: var(--muted);
+      font-size: 11px;
+      overflow-wrap: anywhere;
+      line-height: 1.5;
+    }
+
+    .error {
+      color: var(--danger);
+      font-size: 13px;
+      width: 100%;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 26px;
+    }
+
+    .page-label {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    @media (max-width: 950px) {
+      .video-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 560px) {
+      header {
+        padding: 22px 16px;
+      }
+
+      main {
+        padding: 18px 12px 30px;
+      }
+
+      .video-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        padding: 14px;
+      }
+
+      .pagination {
+        gap: 8px;
+      }
+
+      .pagination button {
+        padding: 11px 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="container">
+      <h1>Video Gallery</h1>
+      <p class="subtitle">
+        Browse videos by ID · 12 videos per page
+      </p>
+    </div>
+  </header>
+
+  <main>
+    <form class="toolbar" id="searchForm">
+      <div class="field">
+        <label for="videoId">Starting video ID</label>
+        <input
+          id="videoId"
+          type="number"
+          min="1"
+          step="1"
+          value="1445"
+          placeholder="Enter video ID"
+          required
+        >
+      </div>
+
+      <button class="primary" type="submit">
+        Load Videos
+      </button>
+
+      <div class="error" id="error" role="alert"></div>
+    </form>
+
+    <div class="info">
+      <h2>Videos</h2>
+      <div class="meta" id="rangeInfo"></div>
+    </div>
+
+    <section
+      class="video-grid"
+      id="videoGrid"
+      aria-label="Video players"
+    ></section>
+
+    <nav class="pagination" aria-label="Video pagination">
+      <button id="prevBtn" type="button">
+        ← Previous 12
+      </button>
+
+      <div class="page-label" id="pageInfo">
+        Videos 1445–1456
+      </div>
+
+      <button class="primary" id="nextBtn" type="button">
+        Next 12 →
+      </button>
+    </nav>
+  </main>
+
+  <script>
+    const BATCH_SIZE = 12;
+    const MAX_ID = Number.MAX_SAFE_INTEGER;
+
+    const input = document.getElementById("videoId");
+    const form = document.getElementById("searchForm");
+    const grid = document.getElementById("videoGrid");
+    const rangeInfo = document.getElementById("rangeInfo");
+    const pageInfo = document.getElementById("pageInfo");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const error = document.getElementById("error");
+
+    let startId = 1445;
+
+    // 1445 -> 1000
+    // 1899 -> 1000
+    // 2000 -> 2000
+    function getMainId(videoId) {
+      return Math.floor(videoId / 1000) * 1000;
+    }
+
+    // Build the MP4 URL for a video.
+    function getVideoUrl(videoId) {
+      const mainId = getMainId(videoId);
+
+      return (
+        `https://jilhub.org/contents/videos/` +
+        `${mainId}/${videoId}/${videoId}.mp4`
+      );
+    }
+
+    function createVideoCard(videoId) {
+      const url = getVideoUrl(videoId);
+
+      const card = document.createElement("article");
+      card.className = "video-card";
+
+      const player = document.createElement("div");
+      player.className = "player";
+
+      const video = document.createElement("video");
+      video.controls = true;
+
+      // Request metadata so the browser can attempt to
+      // retrieve information needed to display a preview.
+      video.preload = "metadata";
+      video.playsInline = true;
+      video.setAttribute("aria-label", `Video ${videoId}`);
+
+      // A separate image thumbnail URL is not available,
+      // so the browser must obtain a frame from the MP4.
+      const source = document.createElement("source");
+      source.src = url;
+      source.type = "video/mp4";
+
+      const status = document.createElement("div");
+      status.className = "player-status";
+      status.textContent = "Loading video preview…";
+
+      video.addEventListener("loadedmetadata", () => {
+        status.textContent = "Preparing preview…";
+
+        // Try to seek to an early frame if the duration
+        // is long enough. This does not start playback.
+        if (Number.isFinite(video.duration) && video.duration > 0) {
+          try {
+            video.currentTime = Math.min(0.1, video.duration / 2);
+          } catch (_) {
+            // Some browsers cannot seek until data is available.
+          }
+        }
+      });
+
+      video.addEventListener("loadeddata", () => {
+        status.classList.add("hidden");
+
+        // Keep the player at the beginning after the preview.
+        if (video.currentTime > 0.1 && !video.seeking) {
+          try {
+            video.currentTime = 0;
+          } catch (_) {
+            // Preview is optional; normal playback still works.
+          }
+        }
+      });
+
+      video.addEventListener("seeked", () => {
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+          status.classList.add("hidden");
+        }
+      });
+
+      video.addEventListener("playing", () => {
+        status.classList.add("hidden");
+      });
+
+      video.addEventListener("error", () => {
+        status.classList.remove("hidden");
+        status.textContent =
+          "Preview unavailable. Check whether this video exists.";
+      });
+
+      video.appendChild(source);
+
+      const details = document.createElement("div");
+      details.className = "video-details";
+
+      const title = document.createElement("div");
+      title.className = "video-title";
+      title.textContent = `Video #${videoId}`;
+
+      const urlLabel = document.createElement("div");
+      urlLabel.className = "video-url";
+      urlLabel.textContent = url;
+
+      details.append(title, urlLabel);
+      player.append(video, status);
+      card.append(player, details);
+
+      return card;
+    }
+
+    function loadVideos() {
+      grid.replaceChildren();
+
+      const endId = startId + BATCH_SIZE - 1;
+      const mainId = getMainId(startId);
+
+      rangeInfo.textContent =
+        `IDs ${startId}–${endId} · Main ID: ${mainId}`;
+
+      pageInfo.textContent = `Videos ${startId}–${endId}`;
+
+      prevBtn.disabled = startId <= 1;
+      nextBtn.disabled = startId > MAX_ID - BATCH_SIZE;
+
+      for (let i = 0; i < BATCH_SIZE; i++) {
+        grid.appendChild(createVideoCard(startId + i));
+      }
+
+      error.textContent = "";
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      const value = Number(input.value);
+
+      if (
+        !Number.isSafeInteger(value) ||
+        value < 1 ||
+        value > MAX_ID - BATCH_SIZE + 1
+      ) {
+        error.textContent =
+          "Enter a valid positive video ID.";
+        return;
+      }
+
+      startId = value;
+      loadVideos();
+    });
+
+    prevBtn.addEventListener("click", () => {
+      if (startId <= 1) return;
+
+      startId = Math.max(1, startId - BATCH_SIZE);
+      input.value = startId;
+
+      loadVideos();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    nextBtn.addEventListener("click", () => {
+      if (startId > MAX_ID - BATCH_SIZE) return;
+
+      startId += BATCH_SIZE;
+      input.value = startId;
+
+      loadVideos();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    loadVideos();
+  </script>
+</body>
+</html>

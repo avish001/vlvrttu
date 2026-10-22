@@ -1,0 +1,433 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video Browser</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #101114;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .input-area {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    input,
+    button {
+      padding: 12px;
+      border-radius: 7px;
+      font-size: 15px;
+    }
+
+    input {
+      flex: 1;
+      min-width: 0;
+      background: #222329;
+      border: 1px solid #444;
+      color: white;
+    }
+
+    button {
+      background: #635bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover:not(:disabled) {
+      background: #5148e5;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    #status {
+      color: #bbb;
+      min-height: 22px;
+      overflow-wrap: anywhere;
+    }
+
+    .navigation {
+      display: flex;
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .navigation button {
+      flex: 1;
+    }
+
+    /* Separate box for every video */
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .video-card {
+      min-width: 0;
+      background: #202126;
+      border: 1px solid #35363e;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .video-card video {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      object-fit: contain;
+    }
+
+    .video-info {
+      padding: 12px;
+    }
+
+    .video-id {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .open-link {
+      display: inline-block;
+      color: #aaa5ff;
+      text-decoration: none;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .open-link:hover {
+      color: white;
+    }
+
+    .video-error {
+      display: none;
+      padding: 10px;
+      color: #ff9999;
+      font-size: 13px;
+    }
+
+    .empty-message {
+      color: #999;
+      text-align: center;
+      padding: 30px 0;
+    }
+
+    @media (max-width: 850px) {
+      .video-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 520px) {
+      body {
+        padding: 12px;
+      }
+
+      .video-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .input-area button {
+        padding: 12px 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <h1>🎬 Video Browser</h1>
+
+    <form class="input-area" id="idForm">
+      <input
+        id="startId"
+        type="number"
+        min="0"
+        step="1"
+        placeholder="Enter starting video ID"
+        required
+        autofocus
+      >
+
+      <button id="loadButton" type="submit">
+        Load Videos
+      </button>
+    </form>
+
+    <p id="status" role="status">
+      Enter a video ID to begin.
+    </p>
+
+    <div class="navigation">
+      <button id="prevButton" disabled>
+        ← Previous 12
+      </button>
+
+      <button id="nextButton" disabled>
+        Next 12 →
+      </button>
+    </div>
+
+    <section class="video-grid" id="videoGrid">
+      <p class="empty-message">Your videos will appear here.</p>
+    </section>
+  </main>
+
+  <script>
+    const BASE_URL =
+      "https://server15.mmsbee1.xyz/uploads/myfiless/id/";
+
+    const BATCH_SIZE = 12;
+    const MAX_CHECKS = 300;
+    const TIMEOUT_MS = 8000;
+
+    const form = document.getElementById("idForm");
+    const startInput = document.getElementById("startId");
+    const loadButton = document.getElementById("loadButton");
+    const status = document.getElementById("status");
+    const grid = document.getElementById("videoGrid");
+    const prevButton = document.getElementById("prevButton");
+    const nextButton = document.getElementById("nextButton");
+
+    let availableVideos = [];
+
+    // Remember the first and last available IDs in the current batch.
+    let firstFoundId = null;
+    let lastFoundId = null;
+
+    // Prevent an older search from overwriting a newer search.
+    let loadToken = 0;
+
+    function videoUrl(id) {
+      return BASE_URL + encodeURIComponent(id) + ".mp4";
+    }
+
+    // Check whether a video can load its metadata.
+    function checkVideo(id) {
+      return new Promise(resolve => {
+        const video = document.createElement("video");
+        let finished = false;
+
+        function done(available) {
+          if (finished) return;
+          finished = true;
+
+          clearTimeout(timer);
+
+          video.onloadedmetadata = null;
+          video.onerror = null;
+          video.removeAttribute("src");
+          video.load();
+
+          resolve(
+            available
+              ? { id, url: videoUrl(id) }
+              : null
+          );
+        }
+
+        const timer = setTimeout(
+          () => done(false),
+          TIMEOUT_MS
+        );
+
+        video.preload = "metadata";
+        video.onloadedmetadata = () => done(true);
+        video.onerror = () => done(false);
+        video.src = videoUrl(id);
+        video.load();
+      });
+    }
+
+    async function loadBatch(startId, direction = "forward") {
+      const token = ++loadToken;
+
+      availableVideos = [];
+      firstFoundId = null;
+      lastFoundId = null;
+
+      grid.replaceChildren();
+
+      status.textContent = "Searching for available videos...";
+
+      loadButton.disabled = true;
+      prevButton.disabled = true;
+      nextButton.disabled = true;
+
+      let checked = 0;
+      let id = startId;
+
+      // Search forward or backward until 12 videos are found.
+      while (
+        availableVideos.length < BATCH_SIZE &&
+        checked < MAX_CHECKS &&
+        id >= 0 &&
+        id <= Number.MAX_SAFE_INTEGER
+      ) {
+        if (token !== loadToken) return;
+
+        const result = await checkVideo(id);
+        checked++;
+
+        if (token !== loadToken) return;
+
+        if (result) {
+          availableVideos.push(result);
+        }
+
+        status.textContent =
+          `Found ${availableVideos.length}/${BATCH_SIZE} videos` +
+          ` · Checked ${checked} IDs`;
+
+        // Advance to the next ID in the chosen direction.
+        id += direction === "forward" ? 1 : -1;
+      }
+
+      if (token !== loadToken) return;
+
+      // Backward results were discovered in descending order.
+      // Reverse them so the displayed IDs remain ascending.
+      if (direction === "backward") {
+        availableVideos.reverse();
+      }
+
+      // Render each video in its own independent box.
+      availableVideos.forEach(addVideoBox);
+
+      if (availableVideos.length > 0) {
+        firstFoundId = availableVideos[0].id;
+        lastFoundId =
+          availableVideos[availableVideos.length - 1].id;
+
+        status.textContent =
+          `Loaded ${availableVideos.length} videos` +
+          ` · IDs ${firstFoundId}–${lastFoundId}`;
+      } else {
+        status.textContent = "No available videos found.";
+        grid.innerHTML =
+          '<p class="empty-message">No videos found in this search range.</p>';
+      }
+
+      if (availableVideos.length < BATCH_SIZE) {
+        status.textContent +=
+          " · Search ended before finding 12 videos.";
+      }
+
+      loadButton.disabled = false;
+
+      prevButton.disabled =
+        firstFoundId === null || firstFoundId === 0;
+
+      nextButton.disabled =
+        lastFoundId === null ||
+        lastFoundId === Number.MAX_SAFE_INTEGER;
+    }
+
+    // Create one separate video player card.
+    function addVideoBox(item) {
+      const card = document.createElement("article");
+      card.className = "video-card";
+
+      const video = document.createElement("video");
+      video.controls = true;
+      video.playsInline = true;
+      video.preload = "metadata";
+      video.src = item.url;
+
+      const error = document.createElement("div");
+      error.className = "video-error";
+      error.textContent =
+        "Playback failed. This video may be unavailable.";
+
+      video.addEventListener("error", () => {
+        error.style.display = "block";
+      });
+
+      video.addEventListener("loadeddata", () => {
+        error.style.display = "none";
+      });
+
+      const info = document.createElement("div");
+      info.className = "video-info";
+
+      const title = document.createElement("div");
+      title.className = "video-id";
+      title.textContent = "Video ID: " + item.id;
+
+      const link = document.createElement("a");
+      link.className = "open-link";
+      link.href = item.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Open video in new tab";
+
+      info.append(title, link);
+      card.append(video, error, info);
+
+      grid.appendChild(card);
+    }
+
+    // Load the initial batch from the entered ID.
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+
+      const id = Number(startInput.value);
+
+      if (
+        !Number.isSafeInteger(id) ||
+        id < 0
+      ) {
+        status.textContent =
+          "Enter a valid non-negative video ID.";
+        return;
+      }
+
+      loadBatch(id, "forward");
+    });
+
+    // Previous: search backward from the first available ID - 1.
+    prevButton.addEventListener("click", () => {
+      if (firstFoundId !== null && firstFoundId > 0) {
+        loadBatch(firstFoundId - 1, "backward");
+      }
+    });
+
+    // Next: search forward from the last available ID + 1.
+    nextButton.addEventListener("click", () => {
+      if (
+        lastFoundId !== null &&
+        lastFoundId < Number.MAX_SAFE_INTEGER
+      ) {
+        loadBatch(lastFoundId + 1, "forward");
+      }
+    });
+  </script>
+</body>
+</html>

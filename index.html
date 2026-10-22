@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Websites</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #141e30, #243b55);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px 20px;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #cbd5e1;
+            margin-bottom: 35px;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .site-button {
+            display: inline-block;
+            width: 220px;
+            padding: 22px;
+            border-radius: 14px;
+            background: #ffffff;
+            color: #243b55;
+            text-decoration: none;
+            font-size: 20px;
+            font-weight: bold;
+            box-shadow: 0 8px 20px #0003;
+            transition: 0.2s;
+        }
+
+        .site-button:hover {
+            transform: translateY(-5px);
+            background: #dbeafe;
+        }
+
+        .site-button span {
+            display: block;
+            font-size: 13px;
+            font-weight: normal;
+            margin-top: 8px;
+            color: #64748b;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>My Websites</h1>
+        <p>Select a website to open</p>
+
+        <div class="buttons">
+            <a href="./cc.html" class="site-button">
+                Site 1
+                <span>Open Website 1</span>
+            </a>
+
+            <a href="./ccc.html" class="site-button">
+                Site 2
+                <span>Open Website 2</span>
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>
